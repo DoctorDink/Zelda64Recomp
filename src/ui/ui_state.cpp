@@ -5,6 +5,8 @@
 #include <SDL2/SDL_video.h>
 #endif
 
+#include <sstream>
+
 #include "rt64_render_hooks.h"
 
 #include "concurrentqueue.h"
@@ -19,6 +21,7 @@
 #include "recomp_input.h"
 #include "librecomp/game.hpp"
 #include "zelda_config.h"
+#include "zelda_support.h"
 #include "ui_rml_hacks.hpp"
 #include "ui_elements.h"
 #include "ui_mod_menu.h"
@@ -196,21 +199,19 @@ public:
         recompui::register_custom_elements();
 
         Rml::Initialise();
-        
+
         // Apply the hack to replace RmlUi's default color parser with one that conforms to HTML5 alpha parsing for SASS compatibility
         recompui::apply_color_hack();
 
         int width, height;
         SDL_GetWindowSizeInPixels(window, &width, &height);
-        
+
         context = Rml::CreateContext("main", Rml::Vector2i(width, height));
         launcher_menu_controller->make_bindings(context);
         config_menu_controller->make_bindings(context);
 
         Rml::Debugger::Initialise(context);
         {
-            const Rml::String directory = "assets/";
-
             struct FontFace {
                 const char* filename;
                 bool fallback_face;
@@ -227,7 +228,13 @@ public:
             };
 
             for (const FontFace& face : font_faces) {
+            #if defined(__APPLE__)
+                const Rml::String directory = "/assets/";
+                Rml::LoadFontFace(zelda64::get_bundle_resource_directory() + directory + face.filename, face.fallback_face);
+            #else
+                const Rml::String directory = "assets/";
                 Rml::LoadFontFace(directory + face.filename, face.fallback_face);
+            #endif
             }
         }
     }
@@ -370,7 +377,7 @@ public:
 
         context.get_document()->Hide();
     }
-    
+
     void hide_all_contexts() {
         for (auto& context : shown_contexts) {
             context.document->Hide();
@@ -424,7 +431,7 @@ inline const std::string read_file_to_string(std::filesystem::path path) {
     std::ifstream stream = std::ifstream{path};
     std::ostringstream ss;
     ss << stream.rdbuf();
-    return ss.str(); 
+    return ss.str();
 }
 
 void init_hook(RT64::RenderInterface* interface, RT64::RenderDevice* device) {
@@ -462,7 +469,7 @@ int cont_button_to_key(SDL_ControllerButtonEvent& button) {
     if ((menuApplyBinding0.input_type != 0 && button.button == menuApplyBinding0.input_id) ||
         (menuApplyBinding1.input_type != 0 && button.button == menuApplyBinding1.input_id)) {
         return SDLK_f;
-    } 
+    }
 
     // Allows closing the menu
     auto menuToggleBinding0 = recomp::get_input_binding(recomp::GameInput::TOGGLE_MENU, 0, recomp::InputDevice::Controller);
@@ -583,7 +590,7 @@ void draw_hook(RT64::RenderCommandList* command_list, RT64::RenderFramebuffer* s
                 mouse_moved = true;
                 mouse_clicked = true;
                 break;
-                
+
             case SDL_EventType::SDL_CONTROLLERBUTTONDOWN: {
                 int rml_key = cont_button_to_key(cur_event.cbutton);
                 if (context_taking_input && rml_key) {
@@ -718,7 +725,10 @@ void recompui::set_render_hooks() {
 }
 
 void recompui::message_box(const char* msg) {
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, zelda64::program_name.data(), msg, nullptr);
+    std::string message(msg);
+    zelda64::dispatch_on_main_thread([message] {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, zelda64::program_name.data(), message.c_str(), nullptr);
+    });
     printf("[ERROR] %s\n", msg);
 }
 

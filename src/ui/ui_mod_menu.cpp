@@ -3,6 +3,8 @@
 
 #include "librecomp/mods.hpp"
 
+#include "zelda_support.h"
+
 #include <string>
 
 #ifdef WIN32
@@ -222,6 +224,9 @@ void ModMenu::open_mods_folder() {
     ShellExecuteW(NULL, L"open", path_wstr.c_str(), NULL, NULL, SW_SHOWDEFAULT);
 #elif defined(__linux__)
     std::string command = "xdg-open " + mods_directory.string() + " &";
+    std::system(command.c_str());
+#elif defined(__APPLE__)
+    std::string command = "open " + mods_directory.string();
     std::system(command.c_str());
 #else
     static_assert(false, "Not implemented for this platform.");
@@ -540,7 +545,12 @@ ModMenu::ModMenu(Element *parent) : Element(parent) {
 
     context.close();
 
+#if defined(__APPLE__)
+    const Rml::String asset = "/assets/config_sub_menu.rml";
+    sub_menu_context = recompui::create_context(zelda64::get_bundle_resource_directory() + asset);
+#else
     sub_menu_context = recompui::create_context("assets/config_sub_menu.rml");
+#endif
     sub_menu_context.open();
     Rml::ElementDocument* sub_menu_doc = sub_menu_context.get_document();
     Rml::Element* config_sub_menu_generic = sub_menu_doc->GetElementById("config_sub_menu");
