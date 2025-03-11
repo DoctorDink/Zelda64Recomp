@@ -53,7 +53,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/lib/RmlUi)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime)
 
-target_include_directories(rt64 PRIVATE ${CMAKE_BINARY_DIR}/rt64/src)
+target_include_directories(rt64 PRIVATE ${CMAKE_BINARY_DIR}/rt64/src ${CMAKE_BINARY_DIR}/rt64/src/contrib/plume)
 
 # RecompiledFuncs - Library containing the primary recompiler output
 add_library(RecompiledFuncs STATIC)
